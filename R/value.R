@@ -1,60 +1,111 @@
 
-# Helper
-value <- function(x = 0) {
+Class <- R6::R6Class
 
-  nv <- new_value(x)
-  validate_value(nv)
+#' @export
+Value <- Class(
+  'Value',
+  list(
+    data = 0,
+    prev = list(),
+    op = '',
+    backward = NULL,
+    grad = 0,
 
-}
+    # Constructor
+    initialize = function(
+      data = 0,
+      prev = list(),
+      op = '',
+      backward = \() NULL
+    ) {
+      stopifnot('data must be numeric' = is.numeric(data))
+      stopifnot('data must be length 1' = length(data) == 1)
+      self$data = data
+      self$prev = prev
+      self$op = op
+      self$backward = backward
+    },
 
-
-# Validator
-validate_value <- function(v) {
-
-  vctrs::obj_check_vector(v)
-  l <- unclass(v)
-  vctrs::vec_check_size(l$data, 1L, arg = 'data')
-  v
-
-}
-
-
-# Constructor
-new_value <- function(x, children = list(), op = '') {
-
-  vctrs::new_vctr(
-    list(
-      data = x,
-      prev = unique(children),
-      op = op,
-      backward = \(x) NULL
-    ),
-    class = 'rmg_value'
+    # print
+    print = function(...) {
+      cat('Value:\n')
+      cat('  data: ', self$data, '\n')
+      cat('  grad: ', self$grad, '\n')
+      cat('  op:   ', self$op  , '\n')
+      if (length(self$prev) > 0) {
+        cat('  prev: ', '\n')
+        print(self$prev)
+      }
+      invisible(self)
+    }
   )
+)
+
+
+# Operations
+
+#' @export
+`+.Value` = function(v1, v2) {
+
+  if (!inherits(v1, 'Value')) {
+    v1 <- Value$new(v1)
+  }
+  if (!inherits(v2, 'Value')) {
+    v2 <- Value$new(v2)
+  }
+
+  out <- Value$new(
+    v1$data + v2$data,
+    prev = list(v1, v2),
+    op = '+'
+  )
+  out$backward <- \() {
+    v1$grad <- v1$grad + out$grad
+    v2$grad <- v2$grad + out$grad
+  }
+  out
 
 }
 
 
-# Set children
-# This function does not really change the field in-place.
-# Should use RC to avoid copying object.
-# See https://stackoverflow.com/questions/21243359/modify-s3-object-without-returning-it
-`children<-` <- function(v, value) {
-  UseMethod('children<-')
+#' @export
+`*.Value` = function(v1, v2) {
+
+  if (!inherits(v1, 'Value')) {
+    v1 <- Value$new(v1)
+  }
+  if (!inherits(v2, 'Value')) {
+    v2 <- Value$new(v2)
+  }
+
+  out <- Value$new(
+    v1$data * v2$data,
+    prev = list(v1, v2),
+    op = '*'
+  )
+  out$backward <- \() {
+    v1$grad <- v1$grad + v2$data * out$grad
+    v2$grad <- v2$grad + v1$data * out$grad
+  }
+  out
+
 }
 
-`children<-.rmg_value` <- function(v, value) {
+# TODO: check and fix backward
 
-  v$prev <- unique(value)
-  v
 
-}
+# Tests -------------------------------------------------------------------
 
-# `+` <- function(x, y) {
-#
-#   if (inherits(x, 'mg_value') && inherits(y, 'mg_value')) {
-#     new_value()
-#
-#   }
-#
-# }
+v1 <- Value$new(2)
+v1$grad <- 1
+
+v2 <- Value$new(3)
+v2$grad <- 2
+
+v3 <- v1 * v2
+v3$grad <- 5
+v3$backward()
+
+v1
+v2
+v3

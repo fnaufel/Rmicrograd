@@ -1,5 +1,3 @@
-library(vctrs)
-
 
 # Helper
 value <- function(x = 0) {
@@ -11,25 +9,12 @@ value <- function(x = 0) {
 
 
 # Validator
-validate_value <- function(x) {
+validate_value <- function(v) {
 
-  data <- unclass(x)
-
-  if (length(data) > 1) {
-    stop(
-      'Data must be a scalar, not a vector',
-      call. = FALSE
-    )
-  }
-
-  if (!is.numeric(data)) {
-    stop(
-      'Data must be numeric.',
-      call. = FALSE
-    )
-  }
-
-  x
+  vctrs::obj_check_vector(v)
+  l <- unclass(v)
+  vctrs::vec_check_size(l$data, 1L, arg = 'data')
+  v
 
 }
 
@@ -37,11 +22,13 @@ validate_value <- function(x) {
 # Constructor
 new_value <- function(x, children = list(), op = '') {
 
-  structure(
-    x,
-    prev = unique(children),
-    op = op,
-    backward = function(x) NULL,
+  vctrs::new_vctr(
+    list(
+      data = x,
+      prev = unique(children),
+      op = op,
+      backward = \(x) NULL
+    ),
     class = 'rmg_value'
   )
 
@@ -49,14 +36,16 @@ new_value <- function(x, children = list(), op = '') {
 
 
 # Set children
-set_children <- function(v, children) {
-  UseMethod('set_children')
+# This function does not really change the field in-place.
+# Should use RC to avoid copying object.
+# See https://stackoverflow.com/questions/21243359/modify-s3-object-without-returning-it
+`children<-` <- function(v, value) {
+  UseMethod('children<-')
 }
 
-set_children.rmg_value <- function(v, children) {
+`children<-.rmg_value` <- function(v, value) {
 
-  children <- unique(children)
-  attr(v, 'prev') <- children
+  v$prev <- unique(value)
   v
 
 }

@@ -1,6 +1,9 @@
 
 Class <- R6::R6Class
 
+
+# Value class -------------------------------------------------------------
+
 #' @export
 Value <- Class(
   'Value',
@@ -26,40 +29,49 @@ Value <- Class(
       self$backward = backward
     },
 
-    # print
+    # Clear this node's and all ancestors' gradients
+    clear_grads = function() {
+      self$grad <- 0
+      for (p in self$prev) p$clear_grads()
+    },
+
+    # Print info on this node and its ancestors
     print = function(...) {
       s <- self$print_helper()
       cat(s)
       invisible(self)
     },
 
-    # print_helper
+    # Print helper
     print_helper = function(v = self, indent = '') {
+      # This node's fields
       s <- paste0(
-        indent, 'Value:\n',
-        indent, '  data: ', v$data, '\n',
-        indent, '  grad: ', v$grad, '\n',
-        indent, '  op:   ', v$op  , '\n'
+        indent, ' |\\------------\n',
+        indent, ' |  data: ', v$data, '\n',
+        indent, ' |  grad: ', v$grad, '\n',
+        indent, ' |  op:   ', v$op  , '\n'
       )
+      # Ancestors
       s2 <- ''
       if (length(v$prev) > 0) {
-        s <- paste0(indent, s, '  prev: ', '\n')
-        indent <- paste0(indent, '    ')
+        s <- paste0(s, indent, ' |  prev ', '\n')
+        indent <- paste0(indent, ' | ')
         s2 <- paste0(
           s2,
           sapply(v$prev, v$print_helper, indent),
           collapse = ''
         )
       }
-      paste0(s, s2)
+      # Return his node's fields and ancestors
+      paste0(s, s2, collapse = '')
     }
-
   )
 )
 
 
-# Operations
+# Operations --------------------------------------------------------------
 
+# Addition ----------------------------------------------------------------
 #' @export
 `+.Value` = function(v1, v2) {
 
@@ -83,7 +95,7 @@ Value <- Class(
 
 }
 
-
+# Multiplication ----------------------------------------------------------
 #' @export
 `*.Value` = function(v1, v2) {
 
@@ -107,21 +119,3 @@ Value <- Class(
 
 }
 
-# TODO: check and fix backward
-
-
-# Tests -------------------------------------------------------------------
-
-v1 <- Value$new(2)
-v1$grad <- 1
-
-v2 <- Value$new(3)
-v2$grad <- 2
-
-v3 <- v1 * v2
-v3$grad <- 5
-v3$backward()
-
-v1
-v2
-v3

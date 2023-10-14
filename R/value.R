@@ -29,6 +29,11 @@ Value <- Class(
       self$backward = backward
     },
 
+    # ReLU method (calls function that returns new Value object)
+    relu = function() {
+      relu(self)
+    },
+
     # Clear this node's and all ancestors' gradients
     clear_grads = function() {
       self$grad <- 0
@@ -95,6 +100,18 @@ Value <- Class(
 
 }
 
+# Subtraction and negation ------------------------------------------------
+#' @export
+`-.Value` = function(v1, v2 = NULL) {
+
+  if (is.null(v2)) {
+    v1 * (-1)
+  } else {
+    v1 + (-v2)
+  }
+
+}
+
 # Multiplication ----------------------------------------------------------
 #' @export
 `*.Value` = function(v1, v2) {
@@ -118,4 +135,54 @@ Value <- Class(
   out
 
 }
+
+# Division ----------------------------------------------------------------
+#' @export
+`/.Value` = function(v1, v2) {
+
+  v1 * v2^(-1)
+
+}
+
+# Pow ---------------------------------------------------------------------
+#' @export
+`^.Value` = function(v1, v2) {
+
+  if (!inherits(v1, 'Value')) {
+    v1 <- Value$new(v1)
+  }
+  stopifnot('exponent must be a number' = is.numeric(v2))
+
+  out <- Value$new(
+    v1$data^v2,
+    prev = list(v1),
+    op = paste0('^', v2)
+  )
+  out$backward <- \() {
+    v1$grad <- v1$grad + v2 * v1$data^(v2 - 1) * out$grad
+  }
+  out
+
+}
+
+# ReLU --------------------------------------------------------------------
+#' @export
+relu = function(v1) {
+
+  if (!inherits(v1, 'Value')) {
+    v1 <- Value$new(v1)
+  }
+
+  out <- Value$new(
+    max(0, v1$data),
+    prev = list(v1),
+    op = 'ReLU'
+  )
+  out$backward <- \() {
+    v1$grad <- v1$grad + ifelse(v1$data <= 0, 0, 1) * out$grad
+  }
+  out
+
+}
+
 

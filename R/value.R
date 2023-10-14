@@ -28,16 +28,32 @@ Value <- Class(
 
     # print
     print = function(...) {
-      cat('Value:\n')
-      cat('  data: ', self$data, '\n')
-      cat('  grad: ', self$grad, '\n')
-      cat('  op:   ', self$op  , '\n')
-      if (length(self$prev) > 0) {
-        cat('  prev: ', '\n')
-        print(self$prev)
-      }
+      s <- self$print_helper()
+      cat(s)
       invisible(self)
+    },
+
+    # print_helper
+    print_helper = function(v = self, indent = '') {
+      s <- paste0(
+        indent, 'Value:\n',
+        indent, '  data: ', v$data, '\n',
+        indent, '  grad: ', v$grad, '\n',
+        indent, '  op:   ', v$op  , '\n'
+      )
+      s2 <- ''
+      if (length(v$prev) > 0) {
+        s <- paste0(indent, s, '  prev: ', '\n')
+        indent <- paste0(indent, '    ')
+        s2 <- paste0(
+          s2,
+          sapply(v$prev, v$print_helper, indent),
+          collapse = ''
+        )
+      }
+      paste0(s, s2)
     }
+
   )
 )
 
